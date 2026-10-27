@@ -1014,6 +1014,13 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
             [supporterLicenseSpecifier setProperty:@"checkmark.seal" forKey:@"image"];
             [supporterLicenseSpecifier setProperty:@"supporterLicensePressed" forKey:@"action"];
             [specifiers addObject:supporterLicenseSpecifier];
+            PSSpecifier *imp = [PSSpecifier preferenceSpecifierNamed:@"" target:self set:defSetter get:defGetter detail:nil cell:PSStaticTextCell edit:nil];
+            [imp setProperty:@"导入许可证文件" forKey:@"title"];
+            [imp setProperty:[DOButtonCell class] forKey:@"cellClass"];
+            [imp setProperty:buttonHeight forKey:@"height"];
+            [imp setProperty:@"doc.badge.plus" forKey:@"image"];
+            [imp setProperty:@"importLicensePressed" forKey:@"action"];
+            [specifiers addObject:imp];
             
             if (!envManager.isJailbroken && !envManager.isInstalledThroughTrollStore) {
                 PSSpecifier *removeJailbreakSwitchSpecifier = [PSSpecifier preferenceSpecifierNamed:DOLocalizedString(@"Button_Remove_Jailbreak") target:self set:@selector(setRemoveJailbreakEnabled:specifier:) get:defGetter detail:nil cell:PSSwitchCell edit:nil];
@@ -1453,6 +1460,41 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
                    dispatch_get_main_queue(), ^{
         [self presentViewController:alert animated:YES completion:nil];
     });
+}
+
+- (void)importLicensePressed
+{
+    UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initWithDocumentTypes:@[@"public.plain-text", @"public.data"] inMode:UIDocumentPickerModeImport];
+    picker.delegate = self;
+    picker.allowsMultipleSelection = NO;
+    [self presentViewController:picker animated:YES completion:nil];
+}
+
+- (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls
+{
+    NSURL *url = urls.firstObject;
+    if (!url) return;
+    BOOL accessed = [url startAccessingSecurityScopedResource];
+    NSError *readError = nil;
+    NSString *content = [NSString stringWithContentsOfURL:url encoding:NSUTF8StringEncoding error:&readError];
+    if (accessed) [url stopAccessingSecurityScopedResource];
+    if (content.length == 0) {
+        [self showSupporterLicenseResultWithTitle:@"导入失败" message:readError.localizedDescription ?: @"无法读取文件"];
+        return;
+    }
+    NSError *importError = nil;
+    if (DORHSupporterImportLicense(content, &importError)) {
+        [[DOPreferenceManager sharedManager] setPreferenceValue:@YES forKey:@"officialUIEnabled"];
+        [self reloadSpecifiers];
+        [self showSupporterLicenseResultWithTitle:@"导入成功" message:@"许可证已激活，界面切换选项已解锁。"];
+    }
+    else {
+        [self showSupporterLicenseResultWithTitle:@"导入失败" message:importError.localizedDescription ?: @"许可证无效"];
+    }
+}
+
+- (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)controller
+{
 }
 
 - (void)promptForActivationCode

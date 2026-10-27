@@ -590,6 +590,53 @@ static inline void DORHSupporterDeactivateSimple(void)
     [[NSNotificationCenter defaultCenter] postNotificationName:DORHSupporterLicenseDidChangeNotification object:nil];
 }
 
+static inline BOOL DORHSupporterImportLicense(NSString *content, NSError **error)
+{
+    if (![content isKindOfClass:NSString.class] || content.length == 0) {
+        if (error) *error = [NSError errorWithDomain:DORHSupporterLicenseErrorDomain
+                                                code:10
+                                            userInfo:@{NSLocalizedDescriptionKey: @"许可证文件为空"}];
+        return NO;
+    }
+
+    NSString *device = nil;
+    NSString *sigB64 = nil;
+    for (NSString *rawLine in [content componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]]) {
+        NSString *line = [rawLine stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+        if ([line hasPrefix:@"DEVICE="]) device = [line substringFromIndex:7];
+        else if ([line hasPrefix:@"SIG="]) sigB64 = [line substringFromIndex:4];
+    }
+
+    if (device.length == 0 || sigB64.length == 0) {
+        if (error) *error = [NSError errorWithDomain:DORHSupporterLicenseErrorDomain
+                                                code:11
+                                            userInfo:@{NSLocalizedDescriptionKey: @"许可证格式无效：缺少 DEVICE 或 SIG"}];
+        return NO;
+    }
+
+    NSString *localDevice = DORHSupporterDeviceCode();
+    if (![device isEqualToString:localDevice]) {
+        if (error) *error = [NSError errorWithDomain:DORHSupporterLicenseErrorDomain
+                                                code:12
+                                            userInfo:@{NSLocalizedDescriptionKey: @"许可证属于其他设备"}];
+        return NO;
+    }
+
+    NSData *sig = DORHSupporterDecodeSignature(sigB64);
+    if (!DORHSupporterVerifyDeviceSignature(localDevice, sig)) {
+        if (error) *error = [NSError errorWithDomain:DORHSupporterLicenseErrorDomain
+                                                code:13
+                                            userInfo:@{NSLocalizedDescriptionKey: @"签名验证失败"}];
+        return NO;
+    }
+
+    (void)DORHSupporterSetPersistentString(DORHSupporterSignatureKey, sigB64);
+    [[NSUserDefaults standardUserDefaults] setObject:sigB64 forKey:DORHSupporterSignatureKey];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    [[NSNotificationCenter defaultCenter] postNotificationName:DORHSupporterLicenseDidChangeNotification object:nil];
+    return YES;
+}
+
 static inline BOOL DORHSupporterIsVerified(void)
 {
     return DORHSupporterIsSimpleActivated();
