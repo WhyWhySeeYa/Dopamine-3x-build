@@ -333,7 +333,7 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
                                                             preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:DOLocalizedString(@"Button_OK") style:UIAlertActionStyleCancel handler:nil]];
     if (repairable) {
-        [alert addAction:[UIAlertAction actionWithTitle:@"Repair" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
+        [alert addAction:[UIAlertAction actionWithTitle:@"修复" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
             [self repairEntry:entry];
         }]];
     }
@@ -1008,7 +1008,7 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
             [specifiers addObject:jetsamSpecifier];
 
             PSSpecifier *supporterLicenseSpecifier = [PSSpecifier preferenceSpecifierNamed:@"" target:self set:defSetter get:defGetter detail:nil cell:PSStaticTextCell edit:nil];
-            [supporterLicenseSpecifier setProperty:(DORHSupporterIsVerified() ? @"Supporter License ✓" : @"Supporter License") forKey:@"title"];
+            [supporterLicenseSpecifier setProperty:(DORHSupporterIsVerified() ? @"支持者许可证 ✓" : @"支持者许可证") forKey:@"title"];
             [supporterLicenseSpecifier setProperty:[DOButtonCell class] forKey:@"cellClass"];
             [supporterLicenseSpecifier setProperty:buttonHeight forKey:@"height"];
             [supporterLicenseSpecifier setProperty:@"checkmark.seal" forKey:@"image"];
@@ -1427,7 +1427,7 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:title
                                                                    message:message
                                                             preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"OK"
+    [alert addAction:[UIAlertAction actionWithTitle:@"好"
                                              style:UIAlertActionStyleDefault
                                            handler:nil]];
 
@@ -1443,7 +1443,7 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
                                                                    message:message
                                                             preferredStyle:UIAlertControllerStyleAlert];
 
-    [alert addAction:[UIAlertAction actionWithTitle:@"Apply Now"
+    [alert addAction:[UIAlertAction actionWithTitle:@"立即应用"
                                              style:UIAlertActionStyleDefault
                                            handler:^(__kindof UIAlertAction * _Nonnull action) {
         [DOSceneDelegate relaunch];
@@ -1458,7 +1458,7 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
 - (void)promptForActivationCode
 {
     NSString *deviceCode = DORHSupporterDeviceCode() ?: @"";
-    NSString *hint = [NSString stringWithFormat:@"设备码：\n%@\n\n激活码 = 私钥对设备码的 ECDSA P-256 签名（base64）\n粘贴完整签名即可", deviceCode];
+    NSString *hint = [NSString stringWithFormat:@"设备码：\n%@", deviceCode];
 
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"输入激活码"
                                                                    message:hint
@@ -1509,12 +1509,12 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
                          status,
                          deviceCode.length > 0 ? deviceCode : @"Unavailable"];
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Supporter License"
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"支持者许可证"
                                                                    message:message
                                                             preferredStyle:UIAlertControllerStyleAlert];
 
     UIAlertAction *copyDeviceCodeAction =
-        [UIAlertAction actionWithTitle:@"Copy Device Code"
+        [UIAlertAction actionWithTitle:@"复制设备码"
                                  style:UIAlertActionStyleDefault
                                handler:^(__kindof UIAlertAction * _Nonnull action) {
         UIPasteboard.generalPasteboard.string = deviceCode;
@@ -1531,7 +1531,7 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
         }]];
     }
 
-    [alert addAction:[UIAlertAction actionWithTitle:@"Paste License"
+    [alert addAction:[UIAlertAction actionWithTitle:@"粘贴许可证"
                                               style:UIAlertActionStyleDefault
                                             handler:^(__kindof UIAlertAction * _Nonnull action) {
         NSString *licenseCode = UIPasteboard.generalPasteboard.string ?: @"";
@@ -1547,7 +1547,7 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
     }]];
 
     if (DORHSupporterIsVerified()) {
-        [alert addAction:[UIAlertAction actionWithTitle:@"Remove License"
+        [alert addAction:[UIAlertAction actionWithTitle:@"移除许可证"
                                                   style:UIAlertActionStyleDestructive
                                                 handler:^(__kindof UIAlertAction * _Nonnull action) {
             DORHSupporterDeactivateSimple();
@@ -1557,7 +1557,7 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
         }]];
     }
 
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
 }
 

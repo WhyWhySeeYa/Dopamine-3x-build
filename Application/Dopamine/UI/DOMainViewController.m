@@ -1523,7 +1523,7 @@ static void DOCustomGlassExportLivePhoto(PHLivePhoto *livePhoto,
 
     UILabel *label = [[UILabel alloc] init];
     label.translatesAutoresizingMaskIntoConstraints = NO;
-    label.text = @"Supporter Only";
+    label.text = @"仅限支持者";
     label.textColor = UIColor.whiteColor;
     label.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
     label.textAlignment = NSTextAlignmentCenter;
@@ -1823,7 +1823,7 @@ static void DOCustomGlassExportLivePhoto(PHLivePhoto *livePhoto,
 
 /********************************** roothide specific ************************************/
         if(otherJailbreakActived(false)) {
-            UIAlertController *alertController = [UIAlertController alertControllerWithTitle:DOLocalizedString(@"Error") message:DOLocalizedString(@"Your device currently has another jailbreak activated, please reboot device.") preferredStyle:UIAlertControllerStyleAlert];
+            UIAlertController *alertController = [UIAlertController alertControllerWithTitle:DOLocalizedString(@"错误") message:DOLocalizedString(@"Your device currently has another jailbreak activated, please reboot device.") preferredStyle:UIAlertControllerStyleAlert];
             UIAlertAction *rebootAction = [UIAlertAction actionWithTitle:DOLocalizedString(@"Button_Close") style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
                 //exit(0);
             }];
@@ -2696,7 +2696,7 @@ static void DOCustomGlassExportLivePhoto(PHLivePhoto *livePhoto,
     self.jailbreakBtn = [[DOJailbreakButton alloc] initWithAction:[UIAction actionWithTitle:jailbreakButtonTitle image:jailbreakButtonImage identifier:@"jailbreak" handler:^(__kindof UIAction * _Nonnull action) {
 /********************************** roothide specific ************************************/
         if (otherJailbreakActived(false)) {
-            UIAlertController *alertController = [UIAlertController alertControllerWithTitle:DOLocalizedString(@"Error") message:DOLocalizedString(@"Your device currently has another jailbreak activated, please reboot device.") preferredStyle:UIAlertControllerStyleAlert];
+            UIAlertController *alertController = [UIAlertController alertControllerWithTitle:DOLocalizedString(@"错误") message:DOLocalizedString(@"Your device currently has another jailbreak activated, please reboot device.") preferredStyle:UIAlertControllerStyleAlert];
             UIAlertAction *closeAction = [UIAlertAction actionWithTitle:DOLocalizedString(@"Button_Close") style:UIAlertActionStyleDefault handler:nil];
             [alertController addAction:closeAction];
             [self presentViewController:alertController animated:YES completion:nil];
@@ -2779,7 +2779,7 @@ static void DOCustomGlassExportLivePhoto(PHLivePhoto *livePhoto,
 
     NSString *jailbreakButtonTitle = DOLocalizedString(@"Button_Jailbreak_Title");
     if (!isSupported)
-        jailbreakButtonTitle = DOLocalizedString(@"Unsupported");
+        jailbreakButtonTitle = DOLocalizedString(@"不支持");
     else if (isJailbroken)
         jailbreakButtonTitle = DOLocalizedString(@"Status_Title_Jailbroken");
     else if (removeJailbreakEnabled)
@@ -2943,7 +2943,7 @@ static void DOCustomGlassExportLivePhoto(PHLivePhoto *livePhoto,
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
         [uiManager completeJailbreak];
-        [uiManager sendLog:@"Rebooting Userspace" debug: NO];
+        [uiManager sendLog:@"正在重启用户空间" debug: NO];
         didFinish = YES;
         [self fadeToBlack: ^{
 
@@ -2952,13 +2952,13 @@ static void DOCustomGlassExportLivePhoto(PHLivePhoto *livePhoto,
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         [NSThread sleepForTimeInterval:0.2];
-        [uiManager sendLog:@"Launching kexploitd" debug: NO];
+        [uiManager sendLog:@"正在启动 kexploitd" debug: NO];
         [NSThread sleepForTimeInterval:0.5];
-        [uiManager sendLog:@"Launching oobPCI" debug: NO];
+        [uiManager sendLog:@"正在启动 oobPCI" debug: NO];
         [NSThread sleepForTimeInterval:0.15];
         [uiManager sendLog:@"Gaining r/w" debug: NO];
         [NSThread sleepForTimeInterval:0.8];
-        [uiManager sendLog:@"Patchfinding" debug: NO];
+        [uiManager sendLog:@"正在查找补丁" debug: NO];
         NSArray *types = @[@"AMFI", @"PAC", @"KTRR", @"KPP", @"PPL", @"KPF", @"APRR", @"AMCC", @"PAN", @"PXN", @"ASLR", @"OPA"]; //Ever heard of the legendary opa bypass
         while (true)
         {
