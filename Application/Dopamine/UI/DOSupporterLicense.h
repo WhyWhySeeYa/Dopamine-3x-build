@@ -458,6 +458,29 @@ static inline NSString *DORHSupporterExpectedActivationCode(NSString *deviceCode
     return hex;
 }
 
+static NSString * const DORHSupporterLegacyActivationSalt = @"dopamine-dual-ui-v1";
+
+static inline NSString *DORHSupporterLegacyActivationCode(NSString *deviceCode)
+{
+    if (deviceCode.length == 0) return nil;
+    NSString *seed = [NSString stringWithFormat:@"%@|%@", deviceCode, DORHSupporterLegacyActivationSalt];
+    NSData *data = [seed dataUsingEncoding:NSUTF8StringEncoding];
+    unsigned char digest[CC_SHA256_DIGEST_LENGTH] = {0};
+    CC_SHA256(data.bytes, (CC_LONG)data.length, digest);
+    NSMutableString *hex = [NSMutableString stringWithCapacity:12];
+    for (int i = 0; i < 6; i++) [hex appendFormat:@"%02X", digest[i]];
+    return hex;
+}
+
+static inline BOOL DORHSupporterCodeMatchesDevice(NSString *normalized, NSString *deviceCode)
+{
+    if (normalized.length == 0 || deviceCode.length == 0) return NO;
+    NSString *modern = DORHSupporterExpectedActivationCode(deviceCode);
+    NSString *legacy = DORHSupporterLegacyActivationCode(deviceCode);
+    return ([modern isEqualToString:normalized] || [legacy isEqualToString:normalized]);
+}
+
+
 static inline BOOL DORHSupporterIsSimpleActivated(void)
 {
     id stored = [[NSUserDefaults standardUserDefaults] objectForKey:DORHSupporterSimpleActivationKey];
@@ -466,9 +489,8 @@ static inline BOOL DORHSupporterIsSimpleActivated(void)
     }
     if (![stored isKindOfClass:NSString.class] || [stored length] == 0) return NO;
 
-    NSString *expected = DORHSupporterExpectedActivationCode(DORHSupporterDeviceCode());
-    if (expected.length == 0) return NO;
-    return [DORHSupporterNormalizeActivationCode(stored) isEqualToString:expected];
+    return DORHSupporterCodeMatchesDevice(DORHSupporterNormalizeActivationCode(stored),
+                                          DORHSupporterDeviceCode());
 }
 
 static NSString * const DORHSupporterActivationLockKey = @"DORHSupporter.ActivationLock";
@@ -503,7 +525,7 @@ static inline BOOL DORHSupporterActivateSimpleCode(NSString *code, NSError **err
                                             userInfo:@{NSLocalizedDescriptionKey: @"无法获取设备标识"}];
         return NO;
     }
-    if (![normalized isEqualToString:expected]) {
+    if (!DORHSupporterCodeMatchesDevice(normalized, DORHSupporterDeviceCode())) {
         NSDictionary *lock = [[NSUserDefaults standardUserDefaults] dictionaryForKey:DORHSupporterActivationLockKey];
         NSInteger attempts = [lock[@"attempts"] integerValue] + 1;
         NSTimeInterval lockDuration = 0;

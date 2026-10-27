@@ -1127,18 +1127,18 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
     uiStyleGroupSpecifier.name = @"界面风格";
     [specifiers addObject:uiStyleGroupSpecifier];
 
-    PSSpecifier *officialUISpecifier = [PSSpecifier preferenceSpecifierNamed:@"使用官方原界面"
-                                                                     target:self
-                                                                        set:defSetter
-                                                                        get:defGetter
-                                                                     detail:nil
-                                                                       cell:PSSwitchCell
-                                                                       edit:nil];
-    [officialUISpecifier setProperty:@YES forKey:@"enabled"];
-    [officialUISpecifier setProperty:@"officialUIEnabled" forKey:@"key"];
-    [officialUISpecifier setProperty:@YES forKey:@"default"];
-    officialUISpecifier.identifier = @"officialUIEnabled";
-    [specifiers addObject:officialUISpecifier];
+    PSSpecifier *glassUISpecifier = [PSSpecifier preferenceSpecifierNamed:@"启用新版界面"
+                                                                   target:self
+                                                                      set:@selector(setGlassUIEnabled:specifier:)
+                                                                      get:@selector(getGlassUIEnabled:)
+                                                                   detail:nil
+                                                                     cell:PSSwitchCell
+                                                                     edit:nil];
+    [glassUISpecifier setProperty:@YES forKey:@"enabled"];
+    [glassUISpecifier setProperty:@"glassUIEnabled" forKey:@"key"];
+    [glassUISpecifier setProperty:@NO forKey:@"default"];
+    glassUISpecifier.identifier = @"glassUIEnabled";
+    [specifiers addObject:glassUISpecifier];
     }
 
     PSSpecifier *bootlogoGropSpecifier = [PSSpecifier emptyGroupSpecifier];
@@ -1178,6 +1178,21 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
 }
 
 #pragma mark - Getters & Setters
+
+- (id)getGlassUIEnabled:(PSSpecifier *)specifier
+{
+    BOOL official = [[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:YES];
+    return @(!official);
+}
+
+- (void)setGlassUIEnabled:(id)value specifier:(PSSpecifier *)specifier
+{
+    BOOL glass = [value boolValue];
+    [[DOPreferenceManager sharedManager] setPreferenceValue:@(!glass) forKey:@"officialUIEnabled"];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [DOSceneDelegate relaunch];
+    });
+}
 
 - (void)setPreferenceValue:(id)value specifier:(PSSpecifier *)specifier
 {
