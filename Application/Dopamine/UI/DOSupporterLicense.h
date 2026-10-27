@@ -323,7 +323,7 @@ DORHSupporterVerifyLicenseCodeForDevice(NSString *licenseCode,
     BOOL verified = SecKeyVerifySignature(publicKey,
                                           kSecKeyAlgorithmECDSASignatureMessageX962SHA256,
                                           (__bridge CFDataRef)payload,
-                                          (__bridge CFDataRef)signature,
+                                          (__bridge CFDataRef)sig,
                                           &verifyError);
     CFRelease(publicKey);
     if (verifyError)
@@ -445,9 +445,51 @@ static inline NSString *DORHSupporterTrimActivationInput(NSString *code)
     return out;
 }
 
+static inline NSData *DORHSupporterDecodeSignature(NSString *base64String)
+{
+    if (![base64String isKindOfClass:NSString.class] || base64String.length == 0) return nil;
+    NSMutableString *padded = [base64String mutableCopy];
+    while (padded.length % 4 != 0) [padded appendString:@"="];
+    return [[NSData alloc] initWithBase64EncodedString:padded options:0];
+}
+
+static inline NSData *DORHSupporterDERFromRawSignature(NSData *raw)
+{
+    if (raw.length != 64) return nil;
+    const uint8_t *b = raw.bytes;
+    NSUInteger rStart = 0, sStart = 32;
+    while (rStart < 31 && b[rStart] == 0) rStart++;
+    while (sStart < 63 && b[sStart] == 0) sStart++;
+    NSUInteger rLen = 32 - rStart, sLen = 64 - sStart;
+    BOOL rPad = (b[rStart] & 0x80) != 0;
+    BOOL sPad = (b[sStart] & 0x80) != 0;
+    NSUInteger bodyLen = 2 + rLen + (rPad ? 1 : 0) + 2 + sLen + (sPad ? 1 : 0);
+
+    NSMutableData *der = [NSMutableData dataWithCapacity:bodyLen + 2];
+    uint8_t seq[2] = {0x30, (uint8_t)bodyLen};
+    [der appendBytes:seq length:2];
+
+    uint8_t rHead[2] = {0x02, (uint8_t)(rLen + (rPad ? 1 : 0))};
+    [der appendBytes:rHead length:2];
+    if (rPad) { uint8_t z = 0; [der appendBytes:&z length:1]; }
+    [der appendBytes:b + rStart length:rLen];
+
+    uint8_t sHead[2] = {0x02, (uint8_t)(sLen + (sPad ? 1 : 0))};
+    [der appendBytes:sHead length:2];
+    if (sPad) { uint8_t z = 0; [der appendBytes:&z length:1]; }
+    [der appendBytes:b + sStart length:sLen];
+    return der;
+}
+
 static inline BOOL DORHSupporterVerifyDeviceSignature(NSString *deviceCode, NSData *signature)
 {
     if (deviceCode.length == 0 || signature.length == 0) return NO;
+
+    NSData *sig = signature;
+    if (sig.length == 64) {
+        sig = DORHSupporterDERFromRawSignature(sig);
+        if (!sig) return NO;
+    }
     NSData *pubRaw = [[NSData alloc] initWithBase64EncodedString:DORHSupporterPublicKeyBase64 options:0];
     if (pubRaw.length == 0) return NO;
 
@@ -489,7 +531,7 @@ static inline BOOL DORHSupporterIsSimpleActivated(void)
     }
     if (![stored isKindOfClass:NSString.class] || [stored length] == 0) return NO;
 
-    NSData *sig = [[NSData alloc] initWithBase64EncodedString:stored options:0];
+    NSData *sig = DORHSupporterDecodeSignature(stored);
     return DORHSupporterVerifyDeviceSignature(DORHSupporterDeviceCode(), sig);
 }
 
@@ -505,7 +547,7 @@ static inline BOOL DORHSupporterActivateSimpleCode(NSString *code, NSError **err
     }
 
     NSString *clean = DORHSupporterTrimActivationInput(code);
-    NSData *sig = [[NSData alloc] initWithBase64EncodedString:clean options:0];
+    NSData *sig = DORHSupporterDecodeSignature(clean);
     NSString *device = DORHSupporterDeviceCode();
 
     if (!DORHSupporterVerifyDeviceSignature(device, sig)) {
