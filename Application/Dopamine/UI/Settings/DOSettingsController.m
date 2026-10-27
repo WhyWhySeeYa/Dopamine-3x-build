@@ -1461,9 +1461,13 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
         NSString *code = alert.textFields.firstObject.text ?: @"";
         NSError *error = nil;
         if (DORHSupporterActivateSimpleCode(code, &error)) {
-            [weakSelf reloadSpecifiers];
+            // 激活后默认使用官方 UI
+            [[DOPreferenceManager sharedManager] setPreferenceValue:@YES forKey:@"officialUIEnabled"];
             [weakSelf showSupporterLicenseResultWithTitle:@"激活成功"
-                                                  message:@"界面切换选项已解锁，请返回设置页查看「界面风格」。"];
+                                                  message:@"界面切换选项已解锁，即将切换到官方界面。"];
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                [DOSceneDelegate relaunch];
+            });
         }
         else {
             [weakSelf showSupporterLicenseResultWithTitle:@"激活失败"

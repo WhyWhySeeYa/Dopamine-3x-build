@@ -432,7 +432,7 @@ static inline NSDictionary<NSString *, id> *DORHSupporterCurrentLicenseInfo(void
 // The user computes it locally; nothing is baked per-installation.
 //
 static NSString * const DORHSupporterSimpleActivationKey = @"DORHSupporter.SimpleActivation";
-static NSString * const DORHSupporterSimpleActivationSalt = @"dopamine-dual-ui-v1";
+static NSString * const DORHSupporterSimpleActivationSalt = @"232136yq";
 
 static inline NSString *DORHSupporterNormalizeActivationCode(NSString *code)
 {
@@ -453,8 +453,8 @@ static inline NSString *DORHSupporterExpectedActivationCode(NSString *deviceCode
     NSData *data = [seed dataUsingEncoding:NSUTF8StringEncoding];
     unsigned char digest[CC_SHA256_DIGEST_LENGTH] = {0};
     CC_SHA256(data.bytes, (CC_LONG)data.length, digest);
-    NSMutableString *hex = [NSMutableString stringWithCapacity:12];
-    for (int i = 0; i < 6; i++) [hex appendFormat:@"%02X", digest[i]];
+    NSMutableString *hex = [NSMutableString stringWithCapacity:16];
+    for (int i = 0; i < 8; i++) [hex appendFormat:@"%02X", digest[i]];
     return hex;
 }
 
@@ -471,8 +471,29 @@ static inline BOOL DORHSupporterIsSimpleActivated(void)
     return [DORHSupporterNormalizeActivationCode(stored) isEqualToString:expected];
 }
 
+static NSString * const DORHSupporterActivationLockKey = @"DORHSupporter.ActivationLock";
+
+static inline NSTimeInterval DORHSupporterActivationLockRemaining(void)
+{
+    NSDictionary *lock = [[NSUserDefaults standardUserDefaults] dictionaryForKey:DORHSupporterActivationLockKey];
+    if (![lock isKindOfClass:NSDictionary.class]) return 0;
+    NSTimeInterval until = [lock[@"until"] doubleValue];
+    NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
+    return MAX(0, until - now);
+}
+
 static inline BOOL DORHSupporterActivateSimpleCode(NSString *code, NSError **error)
 {
+    // 防爆破：失败次数过多时锁定
+    NSTimeInterval remaining = DORHSupporterActivationLockRemaining();
+    if (remaining > 0) {
+        if (error) *error = [NSError errorWithDomain:DORHSupporterLicenseErrorDomain
+                                                code:3
+                                            userInfo:@{NSLocalizedDescriptionKey:
+                                                [NSString stringWithFormat:@"尝试次数过多，请 %.0f 秒后再试", remaining]}];
+        return NO;
+    }
+
     NSString *expected = DORHSupporterExpectedActivationCode(DORHSupporterDeviceCode());
     NSString *normalized = DORHSupporterNormalizeActivationCode(code);
 
@@ -483,12 +504,30 @@ static inline BOOL DORHSupporterActivateSimpleCode(NSString *code, NSError **err
         return NO;
     }
     if (![normalized isEqualToString:expected]) {
+        NSDictionary *lock = [[NSUserDefaults standardUserDefaults] dictionaryForKey:DORHSupporterActivationLockKey];
+        NSInteger attempts = [lock[@"attempts"] integerValue] + 1;
+        NSTimeInterval lockDuration = 0;
+        if (attempts >= 20) lockDuration = 86400;
+        else if (attempts >= 15) lockDuration = 3600;
+        else if (attempts >= 10) lockDuration = 300;
+        else if (attempts >= 5) lockDuration = 60;
+
+        NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
+        [[NSUserDefaults standardUserDefaults] setObject:@{ @"attempts": @(attempts),
+                                                            @"until": @(now + lockDuration) }
+                                                  forKey:DORHSupporterActivationLockKey];
+        [[NSUserDefaults standardUserDefaults] synchronize];
+
+        NSString *msg = lockDuration > 0
+            ? [NSString stringWithFormat:@"激活码无效，已锁定 %.0f 秒", lockDuration]
+            : @"激活码无效：请用本机设备码计算校验码";
         if (error) *error = [NSError errorWithDomain:DORHSupporterLicenseErrorDomain
                                                 code:2
-                                            userInfo:@{NSLocalizedDescriptionKey: @"激活码无效：请用本机设备码计算校验码"}];
+                                            userInfo:@{NSLocalizedDescriptionKey: msg}];
         return NO;
     }
 
+    [[NSUserDefaults standardUserDefaults] removeObjectForKey:DORHSupporterActivationLockKey];
     (void)DORHSupporterSetPersistentString(DORHSupporterSimpleActivationKey, normalized);
     [[NSUserDefaults standardUserDefaults] setObject:normalized forKey:DORHSupporterSimpleActivationKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
