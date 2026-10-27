@@ -16,7 +16,7 @@
 
 static UINavigationController *DOOfficialAwareNavigationController(void)
 {
-    BOOL official = [[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:NO];
+    BOOL official = [[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:YES];
     if (official) {
         return [[DONavigationControllerOfficial alloc] init];
     }

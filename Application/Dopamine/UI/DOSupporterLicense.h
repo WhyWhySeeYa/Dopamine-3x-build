@@ -425,11 +425,88 @@ static inline NSDictionary<NSString *, id> *DORHSupporterCurrentLicenseInfo(void
     return nil;
 }
 
+//
+// Simple activation (UUID + checksum)
+//
+// code = SHA256(deviceCode + "|" + salt)[0..11] in hex, grouped as XXXX-XXXX-XXXX
+// The user computes it locally; nothing is baked per-installation.
+//
+static NSString * const DORHSupporterSimpleActivationKey = @"DORHSupporter.SimpleActivation";
+static NSString * const DORHSupporterSimpleActivationSalt = @"dopamine-dual-ui-v1";
+
+static inline NSString *DORHSupporterNormalizeActivationCode(NSString *code)
+{
+    if (![code isKindOfClass:NSString.class]) return @"";
+    NSMutableString *out = [NSMutableString stringWithCapacity:code.length];
+    for (NSUInteger i = 0; i < code.length; i++) {
+        unichar c = [code characterAtIndex:i];
+        if (c == '-' || c == ' ' || c == '\t' || c == '\n' || c == '\r') continue;
+        [out appendFormat:@"%C", c];
+    }
+    return out.uppercaseString;
+}
+
+static inline NSString *DORHSupporterExpectedActivationCode(NSString *deviceCode)
+{
+    if (deviceCode.length == 0) return nil;
+    NSString *seed = [NSString stringWithFormat:@"%@|%@", deviceCode, DORHSupporterSimpleActivationSalt];
+    NSData *data = [seed dataUsingEncoding:NSUTF8StringEncoding];
+    unsigned char digest[CC_SHA256_DIGEST_LENGTH] = {0};
+    CC_SHA256(data.bytes, (CC_LONG)data.length, digest);
+    NSMutableString *hex = [NSMutableString stringWithCapacity:12];
+    for (int i = 0; i < 6; i++) [hex appendFormat:@"%02X", digest[i]];
+    return hex;
+}
+
+static inline BOOL DORHSupporterIsSimpleActivated(void)
+{
+    id stored = [[NSUserDefaults standardUserDefaults] objectForKey:DORHSupporterSimpleActivationKey];
+    if (![stored isKindOfClass:NSString.class] || [stored length] == 0) {
+        stored = DORHSupporterReadPersistentState()[DORHSupporterSimpleActivationKey];
+    }
+    if (![stored isKindOfClass:NSString.class] || [stored length] == 0) return NO;
+
+    NSString *expected = DORHSupporterExpectedActivationCode(DORHSupporterDeviceCode());
+    if (expected.length == 0) return NO;
+    return [DORHSupporterNormalizeActivationCode(stored) isEqualToString:expected];
+}
+
+static inline BOOL DORHSupporterActivateSimpleCode(NSString *code, NSError **error)
+{
+    NSString *expected = DORHSupporterExpectedActivationCode(DORHSupporterDeviceCode());
+    NSString *normalized = DORHSupporterNormalizeActivationCode(code);
+
+    if (expected.length == 0) {
+        if (error) *error = [NSError errorWithDomain:DORHSupporterLicenseErrorDomain
+                                                code:1
+                                            userInfo:@{NSLocalizedDescriptionKey: @"无法获取设备标识"}];
+        return NO;
+    }
+    if (![normalized isEqualToString:expected]) {
+        if (error) *error = [NSError errorWithDomain:DORHSupporterLicenseErrorDomain
+                                                code:2
+                                            userInfo:@{NSLocalizedDescriptionKey: @"激活码无效：请用本机设备码计算校验码"}];
+        return NO;
+    }
+
+    (void)DORHSupporterSetPersistentString(DORHSupporterSimpleActivationKey, normalized);
+    [[NSUserDefaults standardUserDefaults] setObject:normalized forKey:DORHSupporterSimpleActivationKey];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    [[NSNotificationCenter defaultCenter] postNotificationName:DORHSupporterLicenseDidChangeNotification object:nil];
+    return YES;
+}
+
+static inline void DORHSupporterDeactivateSimple(void)
+{
+    (void)DORHSupporterSetPersistentString(DORHSupporterSimpleActivationKey, nil);
+    [[NSUserDefaults standardUserDefaults] removeObjectForKey:DORHSupporterSimpleActivationKey];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    [[NSNotificationCenter defaultCenter] postNotificationName:DORHSupporterLicenseDidChangeNotification object:nil];
+}
+
 static inline BOOL DORHSupporterIsVerified(void)
 {
-    // Custom Glass build: treat as verified so UI features stay unlocked even
-    // when no supporter license has been activated on this installation.
-    return YES;
+    return DORHSupporterIsSimpleActivated();
 }
 
 static inline NSString *DORHSupporterCurrentID(void)

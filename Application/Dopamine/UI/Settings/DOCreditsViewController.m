@@ -98,7 +98,7 @@ static NSInteger const DOCustomGlassCreditsSeparatorTag = 0xC652;
 
 - (void)customGlassCleanupTableHairlines
 {
-    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:NO]) return;
+    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:YES]) return;
     UITableView *tableView = [self valueForKey:@"table"];
     if (!tableView)
         return;
@@ -144,7 +144,7 @@ static NSInteger const DOCustomGlassCreditsSeparatorTag = 0xC652;
 
 - (void)customGlassStyleVisibleCell:(UITableViewCell *)cell atIndexPath:(NSIndexPath *)indexPath
 {
-    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:NO]) return;
+    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:YES]) return;
     if (!cell)
         return;
 
@@ -185,7 +185,7 @@ static NSInteger const DOCustomGlassCreditsSeparatorTag = 0xC652;
 
 - (void)customGlassRefreshSectionBackdrops
 {
-    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:NO]) return;
+    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:YES]) return;
     UITableView *tableView = [self valueForKey:@"table"];
     if (!tableView)
         return;
@@ -250,7 +250,7 @@ static NSInteger const DOCustomGlassCreditsSeparatorTag = 0xC652;
 
 - (void)customGlassApplyPageAppearance
 {
-    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:NO]) return;
+    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:YES]) return;
     UITableView *tableView = [self valueForKey:@"table"];
     [self customGlassRefreshSectionBackdrops];
     for (UITableViewCell *cell in tableView.visibleCells)
@@ -260,7 +260,7 @@ static NSInteger const DOCustomGlassCreditsSeparatorTag = 0xC652;
 
 - (void)customGlassRefreshPageAppearance
 {
-    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:NO]) return;
+    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:YES]) return;
     [self customGlassApplyPageAppearance];
     UITableView *tableView = [self valueForKey:@"table"];
     [tableView setNeedsLayout];
@@ -275,7 +275,7 @@ static NSInteger const DOCustomGlassCreditsSeparatorTag = 0xC652;
 
 - (void)customGlassThemeDidChange:(NSNotification *)notification
 {
-    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:NO]) return;
+    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:YES]) return;
     if (![NSThread isMainThread]) {
         __weak typeof(self) weakSelf = self;
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -304,7 +304,7 @@ static NSInteger const DOCustomGlassCreditsSeparatorTag = 0xC652;
 
 - (void)customGlassInstallBackNavigation
 {
-    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:NO]) return;
+    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:YES]) return;
     static NSInteger const DOCustomGlassCreditsBackButtonTag = 0xC654;
     if ([self.view viewWithTag:DOCustomGlassCreditsBackButtonTag])
         return;
@@ -337,7 +337,7 @@ static NSInteger const DOCustomGlassCreditsSeparatorTag = 0xC652;
 
 - (void)customGlassInstallPageAppearance
 {
-    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:NO]) return;
+    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:YES]) return;
     self.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
     self.view.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
     self.view.backgroundColor = UIColor.clearColor;

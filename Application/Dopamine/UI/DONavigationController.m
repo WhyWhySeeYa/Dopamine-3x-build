@@ -482,7 +482,7 @@ static CGFloat DOCustomGlassNavigationScrimAlpha(CGFloat luminance, CGFloat hier
         [self.backAction.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
     ]];
 
-    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:NO]) {
+    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:YES]) {
         self.backgroundImageView.hidden = YES;
         self.customGlassWallpaperScrimView.hidden = YES;
         self.customGlassVideoWallpaperView.hidden = YES;
