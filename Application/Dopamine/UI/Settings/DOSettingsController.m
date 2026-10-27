@@ -1458,13 +1458,13 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
 - (void)promptForActivationCode
 {
     NSString *deviceCode = DORHSupporterDeviceCode() ?: @"";
-    NSString *hint = [NSString stringWithFormat:@"设备码：\n%@\n\n激活码 = SHA256(设备码 + \"|dopamine-dual-ui-v1\") 前 12 位十六进制\n格式：XXXX-XXXX-XXXX", deviceCode];
+    NSString *hint = [NSString stringWithFormat:@"设备码：\n%@\n\n激活码 = 私钥对设备码的 ECDSA P-256 签名（base64）\n粘贴完整签名即可", deviceCode];
 
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"输入激活码"
                                                                    message:hint
                                                             preferredStyle:UIAlertControllerStyleAlert];
     [alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
-        textField.placeholder = @"XXXX-XXXX-XXXX";
+        textField.placeholder = @"base64 签名";
         textField.autocapitalizationType = UITextAutocapitalizationTypeAllCharacters;
         textField.autocorrectionType = UITextAutocorrectionTypeNo;
         textField.font = [UIFont monospacedSystemFontOfSize:16 weight:UIFontWeightMedium];

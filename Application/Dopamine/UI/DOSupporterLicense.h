@@ -426,59 +426,51 @@ static inline NSDictionary<NSString *, id> *DORHSupporterCurrentLicenseInfo(void
 }
 
 //
-// Simple activation (UUID + checksum)
+// Asymmetric activation: ECDSA P-256 signature over the device code.
+// Only the public key ships in the binary; the private key stays offline.
 //
-// code = SHA256(deviceCode + "|" + salt)[0..11] in hex, grouped as XXXX-XXXX-XXXX
-// The user computes it locally; nothing is baked per-installation.
-//
-static NSString * const DORHSupporterSimpleActivationKey = @"DORHSupporter.SimpleActivation";
-static NSString * const DORHSupporterSimpleActivationSalt = @"232136yq";
+static NSString * const DORHSupporterPublicKeyBase64 = @"BO5GqFDxPfDI4xcnIXNQ3pFiTysx35uqA9ECjrT3KSuJF6e2dsAymJrhZ6dUbcdXHEhkD2ymg1uTNopdejF9Q/U=";
+static NSString * const DORHSupporterSignatureKey = @"DORHSupporter.Signature";
+static NSString * const DORHSupporterActivationLockKey = @"DORHSupporter.ActivationLock";
 
-static inline NSString *DORHSupporterNormalizeActivationCode(NSString *code)
+static inline NSString *DORHSupporterTrimActivationInput(NSString *code)
 {
     if (![code isKindOfClass:NSString.class]) return @"";
     NSMutableString *out = [NSMutableString stringWithCapacity:code.length];
     for (NSUInteger i = 0; i < code.length; i++) {
         unichar c = [code characterAtIndex:i];
-        if (c == '-' || c == ' ' || c == '\t' || c == '\n' || c == '\r') continue;
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\r') continue;
         [out appendFormat:@"%C", c];
     }
-    return out.uppercaseString;
+    return out;
 }
 
-static inline NSString *DORHSupporterExpectedActivationCode(NSString *deviceCode)
+static inline BOOL DORHSupporterVerifyDeviceSignature(NSString *deviceCode, NSData *signature)
 {
-    if (deviceCode.length == 0) return nil;
-    NSString *seed = [NSString stringWithFormat:@"%@|%@", deviceCode, DORHSupporterSimpleActivationSalt];
-    NSData *data = [seed dataUsingEncoding:NSUTF8StringEncoding];
-    unsigned char digest[CC_SHA256_DIGEST_LENGTH] = {0};
-    CC_SHA256(data.bytes, (CC_LONG)data.length, digest);
-    NSMutableString *hex = [NSMutableString stringWithCapacity:16];
-    for (int i = 0; i < 8; i++) [hex appendFormat:@"%02X", digest[i]];
-    return hex;
+    if (deviceCode.length == 0 || signature.length == 0) return NO;
+    NSData *pubRaw = [[NSData alloc] initWithBase64EncodedString:DORHSupporterPublicKeyBase64 options:0];
+    if (pubRaw.length == 0) return NO;
+
+    NSDictionary *attrs = @{
+        (__bridge id)kSecAttrKeyType: (__bridge id)kSecAttrKeyTypeECSECPrimeRandom,
+        (__bridge id)kSecAttrKeyClass: (__bridge id)kSecAttrKeyClassPublic,
+    };
+    CFErrorRef keyError = NULL;
+    SecKeyRef pubKey = SecKeyCreateWithData((__bridge CFDataRef)pubRaw,
+                                            (__bridge CFDictionaryRef)attrs,
+                                            &keyError);
+    if (!pubKey) return NO;
+
+    NSData *message = [deviceCode dataUsingEncoding:NSUTF8StringEncoding];
+    CFErrorRef verifyError = NULL;
+    BOOL ok = SecKeyVerifySignature(pubKey,
+                                    kSecKeyAlgorithmECDSASignatureMessageX962SHA256,
+                                    (__bridge CFDataRef)message,
+                                    (__bridge CFDataRef)signature,
+                                    &verifyError);
+    CFRelease(pubKey);
+    return ok;
 }
-
-static inline BOOL DORHSupporterCodeMatchesDevice(NSString *normalized, NSString *deviceCode)
-{
-    if (normalized.length == 0 || deviceCode.length == 0) return NO;
-    NSString *modern = DORHSupporterExpectedActivationCode(deviceCode);
-    return [modern isEqualToString:normalized];
-}
-
-
-static inline BOOL DORHSupporterIsSimpleActivated(void)
-{
-    id stored = [[NSUserDefaults standardUserDefaults] objectForKey:DORHSupporterSimpleActivationKey];
-    if (![stored isKindOfClass:NSString.class] || [stored length] == 0) {
-        stored = DORHSupporterReadPersistentState()[DORHSupporterSimpleActivationKey];
-    }
-    if (![stored isKindOfClass:NSString.class] || [stored length] == 0) return NO;
-
-    return DORHSupporterCodeMatchesDevice(DORHSupporterNormalizeActivationCode(stored),
-                                          DORHSupporterDeviceCode());
-}
-
-static NSString * const DORHSupporterActivationLockKey = @"DORHSupporter.ActivationLock";
 
 static inline NSTimeInterval DORHSupporterActivationLockRemaining(void)
 {
@@ -489,9 +481,20 @@ static inline NSTimeInterval DORHSupporterActivationLockRemaining(void)
     return MAX(0, until - now);
 }
 
+static inline BOOL DORHSupporterIsSimpleActivated(void)
+{
+    id stored = [[NSUserDefaults standardUserDefaults] objectForKey:DORHSupporterSignatureKey];
+    if (![stored isKindOfClass:NSString.class] || [stored length] == 0) {
+        stored = DORHSupporterReadPersistentState()[DORHSupporterSignatureKey];
+    }
+    if (![stored isKindOfClass:NSString.class] || [stored length] == 0) return NO;
+
+    NSData *sig = [[NSData alloc] initWithBase64EncodedString:stored options:0];
+    return DORHSupporterVerifyDeviceSignature(DORHSupporterDeviceCode(), sig);
+}
+
 static inline BOOL DORHSupporterActivateSimpleCode(NSString *code, NSError **error)
 {
-    // 防爆破：失败次数过多时锁定
     NSTimeInterval remaining = DORHSupporterActivationLockRemaining();
     if (remaining > 0) {
         if (error) *error = [NSError errorWithDomain:DORHSupporterLicenseErrorDomain
@@ -501,16 +504,11 @@ static inline BOOL DORHSupporterActivateSimpleCode(NSString *code, NSError **err
         return NO;
     }
 
-    NSString *expected = DORHSupporterExpectedActivationCode(DORHSupporterDeviceCode());
-    NSString *normalized = DORHSupporterNormalizeActivationCode(code);
+    NSString *clean = DORHSupporterTrimActivationInput(code);
+    NSData *sig = [[NSData alloc] initWithBase64EncodedString:clean options:0];
+    NSString *device = DORHSupporterDeviceCode();
 
-    if (expected.length == 0) {
-        if (error) *error = [NSError errorWithDomain:DORHSupporterLicenseErrorDomain
-                                                code:1
-                                            userInfo:@{NSLocalizedDescriptionKey: @"无法获取设备标识"}];
-        return NO;
-    }
-    if (!DORHSupporterCodeMatchesDevice(normalized, DORHSupporterDeviceCode())) {
+    if (!DORHSupporterVerifyDeviceSignature(device, sig)) {
         NSDictionary *lock = [[NSUserDefaults standardUserDefaults] dictionaryForKey:DORHSupporterActivationLockKey];
         NSInteger attempts = [lock[@"attempts"] integerValue] + 1;
         NSTimeInterval lockDuration = 0;
@@ -527,7 +525,7 @@ static inline BOOL DORHSupporterActivateSimpleCode(NSString *code, NSError **err
 
         NSString *msg = lockDuration > 0
             ? [NSString stringWithFormat:@"激活码无效，已锁定 %.0f 秒", lockDuration]
-            : @"激活码无效：请用本机设备码计算校验码";
+            : @"激活码无效：签名与设备不匹配";
         if (error) *error = [NSError errorWithDomain:DORHSupporterLicenseErrorDomain
                                                 code:2
                                             userInfo:@{NSLocalizedDescriptionKey: msg}];
@@ -535,8 +533,8 @@ static inline BOOL DORHSupporterActivateSimpleCode(NSString *code, NSError **err
     }
 
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:DORHSupporterActivationLockKey];
-    (void)DORHSupporterSetPersistentString(DORHSupporterSimpleActivationKey, normalized);
-    [[NSUserDefaults standardUserDefaults] setObject:normalized forKey:DORHSupporterSimpleActivationKey];
+    (void)DORHSupporterSetPersistentString(DORHSupporterSignatureKey, clean);
+    [[NSUserDefaults standardUserDefaults] setObject:clean forKey:DORHSupporterSignatureKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
     [[NSNotificationCenter defaultCenter] postNotificationName:DORHSupporterLicenseDidChangeNotification object:nil];
     return YES;
@@ -544,8 +542,8 @@ static inline BOOL DORHSupporterActivateSimpleCode(NSString *code, NSError **err
 
 static inline void DORHSupporterDeactivateSimple(void)
 {
-    (void)DORHSupporterSetPersistentString(DORHSupporterSimpleActivationKey, nil);
-    [[NSUserDefaults standardUserDefaults] removeObjectForKey:DORHSupporterSimpleActivationKey];
+    (void)DORHSupporterSetPersistentString(DORHSupporterSignatureKey, nil);
+    [[NSUserDefaults standardUserDefaults] removeObjectForKey:DORHSupporterSignatureKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
     [[NSNotificationCenter defaultCenter] postNotificationName:DORHSupporterLicenseDidChangeNotification object:nil];
 }
