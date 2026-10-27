@@ -458,26 +458,11 @@ static inline NSString *DORHSupporterExpectedActivationCode(NSString *deviceCode
     return hex;
 }
 
-static NSString * const DORHSupporterLegacyActivationSalt = @"dopamine-dual-ui-v1";
-
-static inline NSString *DORHSupporterLegacyActivationCode(NSString *deviceCode)
-{
-    if (deviceCode.length == 0) return nil;
-    NSString *seed = [NSString stringWithFormat:@"%@|%@", deviceCode, DORHSupporterLegacyActivationSalt];
-    NSData *data = [seed dataUsingEncoding:NSUTF8StringEncoding];
-    unsigned char digest[CC_SHA256_DIGEST_LENGTH] = {0};
-    CC_SHA256(data.bytes, (CC_LONG)data.length, digest);
-    NSMutableString *hex = [NSMutableString stringWithCapacity:12];
-    for (int i = 0; i < 6; i++) [hex appendFormat:@"%02X", digest[i]];
-    return hex;
-}
-
 static inline BOOL DORHSupporterCodeMatchesDevice(NSString *normalized, NSString *deviceCode)
 {
     if (normalized.length == 0 || deviceCode.length == 0) return NO;
     NSString *modern = DORHSupporterExpectedActivationCode(deviceCode);
-    NSString *legacy = DORHSupporterLegacyActivationCode(deviceCode);
-    return ([modern isEqualToString:normalized] || [legacy isEqualToString:normalized]);
+    return [modern isEqualToString:normalized];
 }
 
 
