@@ -1464,10 +1464,15 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
                                                                    message:hint
                                                             preferredStyle:UIAlertControllerStyleAlert];
     [alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
-        textField.placeholder = @"base64 签名";
-        textField.autocapitalizationType = UITextAutocapitalizationTypeAllCharacters;
+        textField.placeholder = @"base64 签名（自动从剪贴板填入）";
+        textField.autocapitalizationType = UITextAutocapitalizationTypeNone;
         textField.autocorrectionType = UITextAutocorrectionTypeNo;
-        textField.font = [UIFont monospacedSystemFontOfSize:16 weight:UIFontWeightMedium];
+        textField.spellCheckingType = UITextSpellCheckingTypeNo;
+        textField.font = [UIFont monospacedSystemFontOfSize:15 weight:UIFontWeightMedium];
+        NSString *clip = UIPasteboard.generalPasteboard.string;
+        if (clip.length > 40 && [clip hasPrefix:@"ME"]) {
+            textField.text = clip;
+        }
     }];
 
     __weak typeof(self) weakSelf = self;
