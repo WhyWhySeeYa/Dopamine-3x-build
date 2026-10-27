@@ -457,6 +457,7 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
 
 - (void)customGlassCleanupTableHairlines
 {
+    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:NO]) return;
     UITableView *tableView = [self valueForKey:@"table"];
     if (!tableView)
         return;
@@ -507,6 +508,7 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
 
 - (void)customGlassStyleVisibleCell:(UITableViewCell *)cell atIndexPath:(NSIndexPath *)indexPath
 {
+    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:NO]) return;
     if (!cell)
         return;
 
@@ -549,6 +551,7 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
 
 - (void)customGlassRefreshSectionBackdrops
 {
+    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:NO]) return;
     UITableView *tableView = [self valueForKey:@"table"];
     if (!tableView)
         return;
@@ -609,6 +612,7 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
 
 - (void)customGlassApplyPageAppearance
 {
+    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:NO]) return;
     UITableView *tableView = [self valueForKey:@"table"];
 
     // Build the Section Glass geometry first. Every row in one surface then
@@ -622,6 +626,7 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
 
 - (void)customGlassRefreshPageAppearance
 {
+    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:NO]) return;
     [self customGlassInstallBackNavigation];
     [self customGlassApplyPageAppearance];
 
@@ -640,6 +645,7 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
 
 - (void)customGlassThemeDidChange:(NSNotification *)notification
 {
+    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:NO]) return;
     if (![NSThread isMainThread]) {
         __weak typeof(self) weakSelf = self;
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -669,6 +675,7 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
 
 - (void)customGlassInstallBackNavigation
 {
+    if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:NO]) return;
     static NSInteger const DOCustomGlassSettingsBackButtonTag = 0xC653;
     if ([self.view viewWithTag:DOCustomGlassSettingsBackButtonTag])
         return;
@@ -1000,13 +1007,15 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
             [jetsamSpecifier setProperty:@"jetsamOptionTitles" forKey:@"titlesDataSource"];
             [specifiers addObject:jetsamSpecifier];
 
-            PSSpecifier *supporterLicenseSpecifier = [PSSpecifier preferenceSpecifierNamed:@"" target:self set:defSetter get:defGetter detail:nil cell:PSStaticTextCell edit:nil];
-            [supporterLicenseSpecifier setProperty:@"Supporter License" forKey:@"title"];
-            [supporterLicenseSpecifier setProperty:[DOButtonCell class] forKey:@"cellClass"];
-            [supporterLicenseSpecifier setProperty:buttonHeight forKey:@"height"];
-            [supporterLicenseSpecifier setProperty:@"checkmark.seal" forKey:@"image"];
-            [supporterLicenseSpecifier setProperty:@"supporterLicensePressed" forKey:@"action"];
-            [specifiers addObject:supporterLicenseSpecifier];
+            if (![[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"officialUIEnabled" fallback:NO]) {
+                PSSpecifier *supporterLicenseSpecifier = [PSSpecifier preferenceSpecifierNamed:@"" target:self set:defSetter get:defGetter detail:nil cell:PSStaticTextCell edit:nil];
+                [supporterLicenseSpecifier setProperty:@"Supporter License" forKey:@"title"];
+                [supporterLicenseSpecifier setProperty:[DOButtonCell class] forKey:@"cellClass"];
+                [supporterLicenseSpecifier setProperty:buttonHeight forKey:@"height"];
+                [supporterLicenseSpecifier setProperty:@"checkmark.seal" forKey:@"image"];
+                [supporterLicenseSpecifier setProperty:@"supporterLicensePressed" forKey:@"action"];
+                [specifiers addObject:supporterLicenseSpecifier];
+            }
             
             if (!envManager.isJailbroken && !envManager.isInstalledThroughTrollStore) {
                 PSSpecifier *removeJailbreakSwitchSpecifier = [PSSpecifier preferenceSpecifierNamed:DOLocalizedString(@"Button_Remove_Jailbreak") target:self set:@selector(setRemoveJailbreakEnabled:specifier:) get:defGetter detail:nil cell:PSSwitchCell edit:nil];
