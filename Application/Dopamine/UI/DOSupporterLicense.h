@@ -323,7 +323,7 @@ DORHSupporterVerifyLicenseCodeForDevice(NSString *licenseCode,
     BOOL verified = SecKeyVerifySignature(publicKey,
                                           kSecKeyAlgorithmECDSASignatureMessageX962SHA256,
                                           (__bridge CFDataRef)payload,
-                                          (__bridge CFDataRef)sig,
+                                          (__bridge CFDataRef)signature,
                                           &verifyError);
     CFRelease(publicKey);
     if (verifyError)
@@ -508,7 +508,7 @@ static inline BOOL DORHSupporterVerifyDeviceSignature(NSString *deviceCode, NSDa
     BOOL ok = SecKeyVerifySignature(pubKey,
                                     kSecKeyAlgorithmECDSASignatureMessageX962SHA256,
                                     (__bridge CFDataRef)message,
-                                    (__bridge CFDataRef)signature,
+                                    (__bridge CFDataRef)sig,
                                     &verifyError);
     CFRelease(pubKey);
     return ok;
