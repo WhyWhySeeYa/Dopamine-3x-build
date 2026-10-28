@@ -345,6 +345,10 @@ static CGFloat DOCustomGlassNavigationScrimAlpha(CGFloat luminance, CGFloat hier
                                              selector:@selector(customGlassHandleApplicationDidBecomeActive:)
                                                  name:UIApplicationDidBecomeActiveNotification
                                                object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(customGlassHandleLowPowerMode:)
+                                                 name:NSProcessInfoPowerStateDidChangeNotification
+                                               object:nil];
     [self setNavigationBarHidden:YES];
 
     // setupBackground already resolved the user-media path (or immutable
@@ -662,8 +666,31 @@ static CGFloat DOCustomGlassNavigationScrimAlpha(CGFloat luminance, CGFloat hier
 - (void)customGlassHandleApplicationDidBecomeActive:(NSNotification *)notification
 {
     (void)notification;
-    if (self.customGlassUsingVideoWallpaper)
+    // 省电：只有停留在首页时才恢复视频壁纸
+    BOOL onHome = self.viewControllers.count > 0 &&
+                  self.topViewController == self.viewControllers.firstObject;
+    if (self.customGlassUsingVideoWallpaper && onHome)
         [self.customGlassWallpaperPlayer play];
+}
+
+- (void)customGlassHandleLowPowerMode:(NSNotification *)notification
+{
+    (void)notification;
+    BOOL low = [NSProcessInfo processInfo].isLowPowerModeEnabled;
+    BOOL onHome = self.viewControllers.count > 0 &&
+                  self.topViewController == self.viewControllers.firstObject;
+
+    if (low) {
+        [self.customGlassWallpaperPlayer pause];
+        self.customGlassVideoWallpaperBlurView.hidden = YES;
+    }
+    else {
+        self.customGlassVideoWallpaperBlurView.hidden = NO;
+        if (self.customGlassUsingVideoWallpaper && onHome &&
+            [UIApplication sharedApplication].applicationState == UIApplicationStateActive) {
+            [self.customGlassWallpaperPlayer play];
+        }
+    }
 }
 
 - (void)dealloc
@@ -906,6 +933,17 @@ static CGFloat DOCustomGlassNavigationScrimAlpha(CGFloat luminance, CGFloat hier
         [self isCustomGlassFullScreenViewController:viewController];
     [self setBackgroundDimmed:!(isMainView || isCustomGlassView)];
     [self.backAction setIgnoreFrame:[self _frameForViewController:viewController]];
+
+    // 省电：视频壁纸只在首页播放，进入子页面立即暂停
+    if (self.customGlassWallpaperPlayer) {
+        BOOL appActive = [UIApplication sharedApplication].applicationState == UIApplicationStateActive;
+        if (isMainView && appActive) {
+            [self.customGlassWallpaperPlayer play];
+        }
+        else {
+            [self.customGlassWallpaperPlayer pause];
+        }
+    }
 }
 
 #pragma mark - Overrides
