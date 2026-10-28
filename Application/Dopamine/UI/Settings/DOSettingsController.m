@@ -1014,14 +1014,6 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
             [supporterLicenseSpecifier setProperty:@"checkmark.seal" forKey:@"image"];
             [supporterLicenseSpecifier setProperty:@"supporterLicensePressed" forKey:@"action"];
             [specifiers addObject:supporterLicenseSpecifier];
-
-            PSSpecifier *checkUpdateSpecifier = [PSSpecifier preferenceSpecifierNamed:@"" target:self set:defSetter get:defGetter detail:nil cell:PSStaticTextCell edit:nil];
-            [checkUpdateSpecifier setProperty:@"检查更新" forKey:@"title"];
-            [checkUpdateSpecifier setProperty:[DOButtonCell class] forKey:@"cellClass"];
-            [checkUpdateSpecifier setProperty:buttonHeight forKey:@"height"];
-            [checkUpdateSpecifier setProperty:@"arrow.down.circle" forKey:@"image"];
-            [checkUpdateSpecifier setProperty:@"checkForUpdatesPressed" forKey:@"action"];
-            [specifiers addObject:checkUpdateSpecifier];
             
             if (!envManager.isJailbroken && !envManager.isInstalledThroughTrollStore) {
                 PSSpecifier *removeJailbreakSwitchSpecifier = [PSSpecifier preferenceSpecifierNamed:DOLocalizedString(@"Button_Remove_Jailbreak") target:self set:@selector(setRemoveJailbreakEnabled:specifier:) get:defGetter detail:nil cell:PSSwitchCell edit:nil];
@@ -1502,51 +1494,6 @@ static NSInteger const DOCustomGlassSettingsSeparatorTag = 0xC651;
                                                   message:error.localizedDescription ?: @"激活码无效"];
         }
     }]];
-    [self presentViewController:alert animated:YES completion:nil];
-}
-
-- (void)checkForUpdatesPressed:(PSSpecifier *)specifier
-{
-    (void)specifier;
-    NSURL *apiURL = [NSURL URLWithString:@"https://api.github.com/repos/WhyWhySeeYa/Dopamine-3x-build/releases/latest"];
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:apiURL
-                                                           cachePolicy:NSURLRequestReloadIgnoringLocalCacheData
-                                                       timeoutInterval:15];
-    [request setValue:@"application/vnd.github+json" forHTTPHeaderField:@"Accept"];
-    [[[NSURLSession sharedSession] dataTaskWithRequest:request
-                                    completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (!data) {
-                [self presentUpdateAlertWithMessage:[NSString stringWithFormat:@"网络请求失败：%@", error.localizedDescription ?: @"未知错误"] url:nil];
-                return;
-            }
-            NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-            if (![json isKindOfClass:[NSDictionary class]] || !json[@"tag_name"]) {
-                [self presentUpdateAlertWithMessage:@"还没有发布任何构建版本" url:nil];
-                return;
-            }
-            NSString *appVersion = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"未知";
-            NSString *msg = [NSString stringWithFormat:@"当前版本：%@\n最新构建：%@\n发布时间：%@",
-                             appVersion,
-                             json[@"tag_name"],
-                             json[@"published_at"] ?: @"未知"];
-            [self presentUpdateAlertWithMessage:msg url:json[@"html_url"]];
-        });
-    }] resume];
-}
-
-- (void)presentUpdateAlertWithMessage:(NSString *)message url:(NSString *)urlString
-{
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"检查更新"
-                                                                   message:message
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    if (urlString.length > 0) {
-        [alert addAction:[UIAlertAction actionWithTitle:@"前往下载" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-            NSURL *url = [NSURL URLWithString:urlString];
-            if (url) [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
-        }]];
-    }
-    [alert addAction:[UIAlertAction actionWithTitle:@"好" style:UIAlertActionStyleCancel handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
 }
 
