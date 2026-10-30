@@ -72,8 +72,8 @@ jobs:
       - name: Set Environment Variables
         run: |
           set -x
-          T2=$(TZ=UTC-2 date +'%Y%m%d_%H%M%S')
-          TS=$(date -j -f "%Y%m%d_%H%M%S" "${T2}" +%s)
+          T2=$(TZ=Asia/Shanghai date +'%Y%m%d_%H%M%S')
+          TS=$(TZ=Asia/Shanghai date -j -f "%Y%m%d_%H%M%S" "${T2}" +%s)
           SHASH=$(git rev-parse --short HEAD)
           echo "ctime=${T2}" >> $GITHUB_ENV
           echo "ctimestamp=${TS}" >> $GITHUB_ENV
@@ -91,7 +91,7 @@ jobs:
           plutil -insert items.4 -xml "<dict><key>cell</key><string>PSGroupCell</string><key>label</key><string>BUILDER</string></dict>" ./Application/Dopamine/UI/Settings/Credits.plist
           plutil -insert items.5 -xml "<dict><key>cell</key><string>PSGroupCell</string><key>headerCellClass</key><string>DOCreditsCell</string><key>names</key><array><dict><key>name</key><string>${{ github.actor }}</string><key>link</key><string>https://github.com/${{ github.repository }}</string></dict></array></dict>" ./Application/Dopamine/UI/Settings/Credits.plist
           gmake -j$(sysctl -n hw.logicalcpu) NIGHTLY=1
-          VERSION="("$(cat ./BaseBin/_external/basebin/.version)-$(cat ./BaseBin/_external/basebin/.version-roothide)-$(git rev-parse --short HEAD)")"-$(TZ=UTC git show -s --date=format-local:'%Y.%m.%d-%Z-%H.%M.%S' --format='%cd' HEAD)
+          VERSION="("$(cat ./BaseBin/_external/basebin/.version)-$(cat ./BaseBin/_external/basebin/.version-roothide)-$(git rev-parse --short HEAD)")"-$(TZ=Asia/Shanghai git show -s --date=format-local:'%Y.%m.%d-%H.%M.%S' --format='%cd' HEAD)-UTC+8
           mv ./Application/Dopamine.ipa  "./Application/roothide-Dopamine-${VERSION}.ipa"
           mv ./Application/Dopamine.tipa "./Application/roothide-Dopamine-${VERSION}.tipa"
           echo "version=${VERSION}" >> $GITHUB_ENV
@@ -119,7 +119,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -x
-          TAG="build-$(date +%Y%m%d-%H%M%S)"
+          TAG="build-$(TZ=Asia/Shanghai date +%Y%m%d-%H%M%S)"
           gh release create "$TAG" \
             "${{ github.workspace }}/Application/roothide-Dopamine-${{ env.version }}.tipa" \
             --title "Dopamine 3.x $TAG" \
