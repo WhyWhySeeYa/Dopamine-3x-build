@@ -80,8 +80,12 @@
     static dispatch_once_t onceToken;
     static NSArray *releases;
     dispatch_once(&onceToken, ^{
-        NSURL *url = [NSURL URLWithString:@"https://api.github.com/repos/kulinichx/RootHide/releases"];
-        NSData *data = [NSData dataWithContentsOfURL:url];
+        NSURL *url = [NSURL URLWithString:@"https://api.github.com/repos/WhyWhySeeYa/Dopamine-3x-build/releases?per_page=20"];
+        NSMutableURLRequest *releaseRequest = [NSMutableURLRequest requestWithURL:url
+                                                                     cachePolicy:NSURLRequestReloadIgnoringLocalCacheData
+                                                                 timeoutInterval:10];
+        [releaseRequest setValue:@"application/vnd.github+json" forHTTPHeaderField:@"Accept"];
+        NSData *data = [NSURLConnection sendSynchronousRequest:releaseRequest returningResponse:nil error:nil];
         if (data) {
             NSError *error;
             releases = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:&error];

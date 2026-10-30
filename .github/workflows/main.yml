@@ -119,7 +119,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -x
-          TAG="build-$(TZ=Asia/Shanghai date +%Y%m%d-%H%M%S)"
+          APPVER="$(cat ./BaseBin/_external/basebin/.version)-$(cat ./BaseBin/_external/basebin/.version-roothide)"
+          TAG="$APPVER"
+          N=1
+          while gh release view "$TAG" >/dev/null 2>&1; do
+            TAG="${APPVER}-rc${N}"
+            N=$((N+1))
+          done
           gh release create "$TAG" \
             "${{ github.workspace }}/Application/roothide-Dopamine-${{ env.version }}.tipa" \
             --title "Dopamine 3.x $TAG" \
