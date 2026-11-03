@@ -90,7 +90,7 @@ jobs:
           export THEOS="${BASEDIR}/theos"
           plutil -insert items.4 -xml "<dict><key>cell</key><string>PSGroupCell</string><key>label</key><string>BUILDER</string></dict>" ./Application/Dopamine/UI/Settings/Credits.plist
           plutil -insert items.5 -xml "<dict><key>cell</key><string>PSGroupCell</string><key>headerCellClass</key><string>DOCreditsCell</string><key>names</key><array><dict><key>name</key><string>${{ github.actor }}</string><key>link</key><string>https://github.com/${{ github.repository }}</string></dict></array></dict>" ./Application/Dopamine/UI/Settings/Credits.plist
-          gmake -j$(sysctl -n hw.logicalcpu) NIGHTLY=1
+          gmake -j$(sysctl -n hw.logicalcpu) NIGHTLY=1 DO_BUILD_NUMBER=${{ github.run_number }}
           VERSION="("$(cat ./BaseBin/_external/basebin/.version)-$(cat ./BaseBin/_external/basebin/.version-roothide)-$(git rev-parse --short HEAD)")"-$(TZ=Asia/Shanghai git show -s --date=format-local:'%Y.%m.%d-%H.%M.%S' --format='%cd' HEAD)-UTC+8
           mv ./Application/Dopamine.ipa  "./Application/roothide-Dopamine-${VERSION}.ipa"
           mv ./Application/Dopamine.tipa "./Application/roothide-Dopamine-${VERSION}.tipa"
@@ -119,13 +119,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -x
-          APPVER="$(cat ./BaseBin/_external/basebin/.version)-$(cat ./BaseBin/_external/basebin/.version-roothide)"
+          APPVER="$(cat ./BaseBin/_external/basebin/.version)-$(cat ./BaseBin/_external/basebin/.version-roothide).${{ github.run_number }}"
           TAG="$APPVER"
-          N=1
-          while gh release view "$TAG" >/dev/null 2>&1; do
-            TAG="${APPVER}-rc${N}"
-            N=$((N+1))
-          done
           gh release create "$TAG" \
             "${{ github.workspace }}/Application/roothide-Dopamine-${{ env.version }}.tipa" \
             --title "Dopamine 3.x $TAG" \

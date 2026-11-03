@@ -1,3 +1,5 @@
+DO_BUILD_SUFFIX := $(if $(DO_BUILD_NUMBER),.$(DO_BUILD_NUMBER),)
+
 .PHONY: all clean build_clean
 
 all: Dopamine.ipa
@@ -26,7 +28,7 @@ endif
 	cp -a Dopamine/Resources/*.deb build/Build/Products/Debug-iphoneos/Dopamine.app/
 	cp ../BaseBin/.build/libroothider.dylib build/Build/Products/Debug-iphoneos/Dopamine.app/
 	plutil -replace CFBundleIdentifier -string "com.opa334.Dopamine-roothide" build/Build/Products/Debug-iphoneos/Dopamine.app/Info.plist
-	plutil -replace CFBundleShortVersionString -string "$(shell cat ../BaseBin/_external/basebin/.version)-$(shell cat ../BaseBin/_external/basebin/.version-roothide)" build/Build/Products/Debug-iphoneos/Dopamine.app/Info.plist
+	plutil -replace CFBundleShortVersionString -string "$(shell cat ../BaseBin/_external/basebin/.version)-$(shell cat ../BaseBin/_external/basebin/.version-roothide)$(DO_BUILD_SUFFIX)" build/Build/Products/Debug-iphoneos/Dopamine.app/Info.plist
 # ifeq ($(PALEHIDE), 1)
 	make -C Dopamine/Exploits/palera1n package
 	cp -a Dopamine/Exploits/palera1n/.framework build/Build/Products/Debug-iphoneos/Dopamine.app/Frameworks/palera1n.framework

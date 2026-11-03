@@ -22,13 +22,14 @@
         components = [components subarrayWithRange:NSMakeRange(0, 3)];
     }
     
-    while (components.count < 4)
+    while (components.count < 5)
         components = [components arrayByAddingObject:@"0"];
 
-    numericalRepresentation |= [components[0] integerValue] << 24;
-    numericalRepresentation |= [components[1] integerValue] << 16;
-    numericalRepresentation |= [components[2] integerValue] << 8;
-    numericalRepresentation |= [components[3] integerValue];
+    numericalRepresentation |= [components[0] integerValue] << 32;
+    numericalRepresentation |= [components[1] integerValue] << 24;
+    numericalRepresentation |= [components[2] integerValue] << 16;
+    numericalRepresentation |= [components[3] integerValue] << 8;
+    numericalRepresentation |= [components[4] integerValue];
     return numericalRepresentation;
 }
 
