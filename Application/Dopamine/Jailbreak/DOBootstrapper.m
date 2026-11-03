@@ -236,14 +236,83 @@ NSString *const bootstrapErrorDomain = @"BootstrapErrorDomain";
         return;
     }
     
+    // 加固 1：解包前预检（tar 非空、存储空间充足），避免解到一半空间耗尽
+    NSError *preflightError = [self preflightCheckBootstrapTar:bootstrapTar];
+    if (preflightError) {
+        completion(preflightError);
+        return;
+    }
+
+    // 标记解包进行中；若中途崩溃/断电，下次启动可据此识别未完成状态
+    [[NSData data] writeToFile:JBROOT_PATH(@"/.bootstrap_extracting") atomically:YES];
+
     decompressionError = [self extractTar:bootstrapTar toPath:@"/"];
     if (decompressionError) {
+        // 保留 tar 与进行中标记，便于重试和排查，不删除现场
         completion(decompressionError);
         return;
     }
-    
+
+    // 加固 2：解包后校验关键路径，避免留下"看似成功实则残缺"的环境
+    NSError *verifyError = [self verifyExtractedBootstrap];
+    if (verifyError) {
+        completion(verifyError);
+        return;
+    }
+
+    [[NSFileManager defaultManager] removeItemAtPath:JBROOT_PATH(@"/.bootstrap_extracting") error:nil];
+    [[NSFileManager defaultManager] removeItemAtPath:bootstrapTar error:nil];
+
     [[NSData data] writeToFile:JBROOT_PATH(@"/.installed_dopamine") atomically:YES];
     completion(nil);
+}
+
+- (NSError *)preflightCheckBootstrapTar:(NSString *)bootstrapTar
+{
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+
+    NSDictionary *tarAttributes = [fileManager attributesOfItemAtPath:bootstrapTar error:nil];
+    unsigned long long tarSize = [tarAttributes fileSize];
+    if (tarSize == 0) {
+        return [NSError errorWithDomain:bootstrapErrorDomain
+                                   code:BootstrapErrorCodeFailedDecompressing
+                               userInfo:@{NSLocalizedDescriptionKey : @"引导包解压结果为空，已中止安装"}];
+    }
+
+    // 解包后体积约为 tar 的 1.2 倍，另预留 100MB 余量
+    unsigned long long requiredSpace = (unsigned long long)(tarSize * 1.2) + (100ULL * 1024 * 1024);
+    NSDictionary *fsAttributes = [fileManager attributesOfFileSystemForPath:JBROOT_PATH(@"/") error:nil];
+    unsigned long long freeSpace = [fsAttributes[NSFileSystemFreeSize] unsignedLongLongValue];
+    if (freeSpace > 0 && freeSpace < requiredSpace) {
+        return [NSError errorWithDomain:bootstrapErrorDomain
+                                   code:BootstrapErrorCodeFailedExtracting
+                               userInfo:@{NSLocalizedDescriptionKey : [NSString stringWithFormat:@"存储空间不足，需要约 %llu MB，当前可用 %llu MB",
+                                                                       requiredSpace / 1024 / 1024, freeSpace / 1024 / 1024]}];
+    }
+
+    return nil;
+}
+
+- (NSError *)verifyExtractedBootstrap
+{
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+
+    // basebin 由独立流程处理，这里只校验 bootstrap 自身的关键路径
+    NSArray<NSString *> *requiredPaths = @[
+        JBROOT_PATH(@"/usr/bin/dpkg"),
+        JBROOT_PATH(@"/usr/bin"),
+        JBROOT_PATH(@"/etc"),
+    ];
+
+    for (NSString *requiredPath in requiredPaths) {
+        if (![fileManager fileExistsAtPath:requiredPath]) {
+            return [NSError errorWithDomain:bootstrapErrorDomain
+                                       code:BootstrapErrorCodeFailedExtracting
+                                   userInfo:@{NSLocalizedDescriptionKey : [NSString stringWithFormat:@"引导文件校验失败，缺少 %@，环境可能不完整", requiredPath]}];
+        }
+    }
+
+    return nil;
 }
 
 - (NSError *)updateVarJbSymlink
