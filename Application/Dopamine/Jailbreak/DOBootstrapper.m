@@ -237,7 +237,7 @@ NSString *const bootstrapErrorDomain = @"BootstrapErrorDomain";
     }
     
     // 加固 1：解包前预检（tar 非空、存储空间充足），避免解到一半空间耗尽
-    NSError *preflightError = [self preflightCheckBootstrapTar:bootstrapTar];
+    NSError *preflightError = [self preflightCheckBootstrapTar:bootstrapTar atRoot:JBROOT_PATH(@"/")];
     if (preflightError) {
         completion(preflightError);
         return;
@@ -254,7 +254,7 @@ NSString *const bootstrapErrorDomain = @"BootstrapErrorDomain";
     }
 
     // 加固 2：解包后校验关键路径，避免留下"看似成功实则残缺"的环境
-    NSError *verifyError = [self verifyExtractedBootstrap];
+    NSError *verifyError = [self verifyExtractedBootstrapAtRoot:JBROOT_PATH(@"/")];
     if (verifyError) {
         completion(verifyError);
         return;
@@ -267,7 +267,7 @@ NSString *const bootstrapErrorDomain = @"BootstrapErrorDomain";
     completion(nil);
 }
 
-- (NSError *)preflightCheckBootstrapTar:(NSString *)bootstrapTar
+- (NSError *)preflightCheckBootstrapTar:(NSString *)bootstrapTar atRoot:(NSString *)rootPath
 {
     NSFileManager *fileManager = [NSFileManager defaultManager];
 
@@ -281,7 +281,7 @@ NSString *const bootstrapErrorDomain = @"BootstrapErrorDomain";
 
     // 解包后体积约为 tar 的 1.2 倍，另预留 100MB 余量
     unsigned long long requiredSpace = (unsigned long long)(tarSize * 1.2) + (100ULL * 1024 * 1024);
-    NSDictionary *fsAttributes = [fileManager attributesOfFileSystemForPath:JBROOT_PATH(@"/") error:nil];
+    NSDictionary *fsAttributes = [fileManager attributesOfFileSystemForPath:rootPath error:nil];
     unsigned long long freeSpace = [fsAttributes[NSFileSystemFreeSize] unsignedLongLongValue];
     if (freeSpace > 0 && freeSpace < requiredSpace) {
         return [NSError errorWithDomain:bootstrapErrorDomain
@@ -293,15 +293,15 @@ NSString *const bootstrapErrorDomain = @"BootstrapErrorDomain";
     return nil;
 }
 
-- (NSError *)verifyExtractedBootstrap
+- (NSError *)verifyExtractedBootstrapAtRoot:(NSString *)rootPath
 {
     NSFileManager *fileManager = [NSFileManager defaultManager];
 
     // basebin 由独立流程处理，这里只校验 bootstrap 自身的关键路径
     NSArray<NSString *> *requiredPaths = @[
-        JBROOT_PATH(@"/usr/bin/dpkg"),
-        JBROOT_PATH(@"/usr/bin"),
-        JBROOT_PATH(@"/etc"),
+        [rootPath stringByAppendingPathComponent:@"usr/bin/dpkg"],
+        [rootPath stringByAppendingPathComponent:@"usr/bin"],
+        [rootPath stringByAppendingPathComponent:@"etc"],
     ];
 
     for (NSString *requiredPath in requiredPaths) {
@@ -1195,12 +1195,33 @@ int getCFMajorVersion(void)
         completion(error);
         return -1;
     }
-    
+
+    // 加固：解包前预检（tar 非空、目标卷空间充足），避免解到一半空间耗尽
+    NSError* preflightError = [self preflightCheckBootstrapTar:bootstrapTarFile atRoot:jbroot_path];
+    if(preflightError) {
+        completion(preflightError);
+        return -1;
+    }
+
+    // 标记解包进行中；异常中断后可据此识别未完成状态
+    [[NSData data] writeToFile:[jbroot_path stringByAppendingPathComponent:@".bootstrap_extracting"] atomically:YES];
+
     NSError* decompressionError = [self extractTar:bootstrapTarFile toPath:jbroot_path];
     if (decompressionError) {
+        // 保留 tar 与进行中标记，便于重试与排查，不删除现场
         completion(decompressionError);
         return -1;
     }
+
+    // 加固：解包后校验关键路径，避免留下"看似成功实则残缺"的环境
+    NSError* verifyError = [self verifyExtractedBootstrapAtRoot:jbroot_path];
+    if(verifyError) {
+        completion(verifyError);
+        return -1;
+    }
+
+    [[NSFileManager defaultManager] removeItemAtPath:[jbroot_path stringByAppendingPathComponent:@".bootstrap_extracting"] error:nil];
+    [[NSFileManager defaultManager] removeItemAtPath:bootstrapTarFile error:nil];
     
     NSString* jbroot_secondary = [NSString stringWithFormat:@"/var/mobile/Containers/Shared/AppGroup/.jbroot-%016llX", jbrand_current()];
     DOASSERT(mkdir(jbroot_secondary.fileSystemRepresentation, 0755) == 0);
