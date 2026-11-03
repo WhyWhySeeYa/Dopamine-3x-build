@@ -36,6 +36,10 @@ typedef NS_ENUM(NSInteger, BootstrapErrorCode) {
 - (NSError *)finalizeBootstrap;
 - (NSError *)deleteBootstrap;
 
+// 引导包安装加固（供 DOBootstrapper(roothide) 分类调用）
+- (NSError *)preflightCheckBootstrapTar:(NSString *)bootstrapTar atRoot:(NSString *)rootPath;
+- (NSError *)verifyExtractedBootstrapAtRoot:(NSString *)rootPath;
+
 @end
 
 NS_ASSUME_NONNULL_END
